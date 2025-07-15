@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Navegación de Categorías CBT</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      background-image: url("fondo.jpg"); 
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      margin: 0; padding: 20px; text-align: center;
+    }
+    .container { 
+      max-width: 1200px; 
+      margin: 20px auto; 
+      padding: 20px; 
+      background-color: rgb(247, 241, 229); 
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); 
+      border-radius: 8px; 
+    }
+    h1 { 
+      color: #333; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 20px; 
+    }
+    .logo { width: 250px; height: 250px; }
+    #navegacion { 
+      font-size: 1rem; 
+      font-weight: bold; 
+      background-color: #eef2ff; 
+      padding: 10px; 
+      border-radius: 5px; 
+      display: inline-block; 
+    }
+    .categorias-container { 
+      display: grid; 
+      grid-template-columns: repeat(4, 1fr); 
+      gap: 20px; 
+      justify-content: center; 
+      padding-top: 20px; 
+    }
+    .categoria { 
+      padding: 15px; 
+      border: 1px solid #ddd; 
+      background-color: #f9f9f9; 
+      cursor: pointer; 
+      border-radius: 8px; 
+      transition: 0.3s; 
+      text-align: center; 
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); 
+    }
+    .categoria:hover { background-color: #ddeeff; }
+    .categoria div { font-size: 1rem; font-weight: bold; }
+    .botones-container { 
+      display: flex; 
+      justify-content: center; 
+      gap: 10px; 
+      margin-top: 15px; 
+    }
+    .btn { 
+      padding: 10px 15px; 
+      background-color: #007bff; 
+      color: #ffffff; 
+      border: none; 
+      border-radius: 5px; 
+      cursor: pointer; 
+      width: auto; 
+    }
+    .btn:hover { background-color: #0056b3; }
+    .final { 
+      background-color: #ffebcd; 
+      font-weight: bold; 
+      padding: 15px; 
+      border-radius: 8px; 
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); 
+    }
+    footer { 
+      margin-top: 30px; 
+      padding: 15px; 
+      background-color: rgba(221, 221, 221, 0.8); 
+      font-weight: bold; 
+      border-radius: 5px; 
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>
+      <img src="logo_carlosbusca.png" alt="Logo Carlos Busca" class="logo">
+      Navegación de Categorías CBT
+    </h1>
+    <div id="navegacion">Ubicación: Categorías principales</div>
+    <div id="botones" class="botones-container" style="display: none;">
+      <button class="btn" onclick="volverInicio()">Ir a Categorías Principales</button>
+      <button class="btn" onclick="volverAtras()">Volver Atrás</button>
+    </div>
+    <div class="categorias-container" id="categorias"></div>
+  </div>
+
+  <footer>Diseñado por Carlos</footer>
+
+  <script>
+    const ACCESS_TOKEN = "APP_USR-3978569451523792-071010-32589dc04f8d16eddca2f7a35ab58ec3-353808980";
+    const API_URL = `https://api.mercadolibre.com/sites/CBT/categories?access_token=${ACCESS_TOKEN}`;
+    const contenedorCategorias = document.getElementById("categorias");
+    const rutaNavegacion = document.getElementById("navegacion");
+    let historialCategorias = [];
+
+    async function obtenerCategorias(url) {
+      try {
+        const respuesta = await fetch(url);
+        if (!respuesta.ok) throw new Error(`Error al obtener datos: ${respuesta.status}`);
+        const datos = await respuesta.json();
+        mostrarCategorias(datos);
+      } catch (error) {
+        contenedorCategorias.innerHTML = `<p>Error: ${error.message}</p>`;
+      }
+    }
+
+    function mostrarCategorias(categorias) {
+      contenedorCategorias.innerHTML = "";
+      categorias.forEach(categoria => {
+        const div = document.createElement("div");
+        div.className = "categoria";
+        div.innerHTML = `<div>${categoria.name}</div>
+                         <button class="btn" onclick="event.stopPropagation(); copiarTexto('${categoria.id}')">${categoria.id}</button>`;
+        div.onclick = () => navegarCategoria(categoria.id, categoria.name);
+        contenedorCategorias.appendChild(div);
+      });
+
+      actualizarRutaNavegacion();
+      document.getElementById("botones").style.display = historialCategorias.length > 0 ? "flex" : "none";
+    }
+
+    async function navegarCategoria(id, nombre) {
+      const url = `https://api.mercadolibre.com/categories/${id}?access_token=${ACCESS_TOKEN}`;
+      try {
+        const respuesta = await fetch(url);
+        if (!respuesta.ok) throw new Error(`Error al obtener subcategorías: ${respuesta.status}`);
+        const datos = await respuesta.json();
+        historialCategorias.push({ id, nombre });
+
+        actualizarRutaNavegacion();
+        if (datos.children_categories.length > 0) {
+          mostrarCategorias(datos.children_categories);
+        } else {
+          contenedorCategorias.innerHTML = `<div class="categoria final">Categoría Final: ${nombre}
+                                             <button class="btn" onclick="copiarTexto('${id}')">${id}</button></div>`;
+        }
+
+        document.getElementById("botones").style.display = "flex";
+      } catch (error) {
+        contenedorCategorias.innerHTML = `<p>Error: ${error.message}</p>`;
+      }
+    }
+
+    function actualizarRutaNavegacion() {
+      rutaNavegacion.innerHTML = `Ubicación: ${historialCategorias.map((cat, index) => 
+        `<span style="cursor: pointer; color: #007bff; text-decoration: underline;" 
+               onclick="irAtras(${index})">${cat.nombre}</span>`).join(" > ")}`;
+    }
+
+    function irAtras(indice) {
+      historialCategorias = historialCategorias.slice(0, indice + 1);
+      navegarCategoria(historialCategorias[indice].id, historialCategorias[indice].nombre);
+    }
+
+    function copiarTexto(texto) {
+      navigator.clipboard.writeText(texto).then(() => alert(`ID copiado: ${texto}`));
+    }
+
+    function volverAtras() {
+      historialCategorias.pop();
+      actualizarRutaNavegacion();
+      obtenerCategorias(API_URL);
+    }
+
+    function volverInicio() {
+      historialCategorias = [];
+      actualizarRutaNavegacion();
+      obtenerCategorias(API_URL);
+    }
+
+    obtenerCategorias(API_URL);
+  </script>
+</body>
+</html>
